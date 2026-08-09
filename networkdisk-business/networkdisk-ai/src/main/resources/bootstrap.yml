@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: networkdisk-ai
+
+  config:
+    import: classpath:config.yml

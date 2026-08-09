@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    # 1. 使用官方镜像，版本建议指定具体版本号，避免'latest'带来不确定性
+    image: elasticsearch:7.17.6
+    container_name: es
+    restart: always
+    environment:
+      # 集群基础配置
+      - cluster.name=es-cluster
+      - node.name=es
+      # 单节点模式，免去集群发现的复杂配置
+      - discovery.type=single-node
+      # ⚠️ 请务必将 'your-strong-password' 修改为你自己的强密码
+#      - ELASTIC_PASSWORD=your-strong-password
+      # ES 8.x 默认开启安全认证，此配置显式启用
+#      - xpack.security.enabled=true
+      # 锁定内存，防止ES内存被交换到磁盘，影响性能
+      - bootstrap.memory_lock=true
+      # 限制JVM堆内存大小，建议设为容器内存限制的一半
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      # 解除memlock的限制，使bootstrap.memory_lock生效
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      # 挂载当前目录下的数据文件夹到容器内，实现数据持久化
+      - ./docker_data/es/data:/usr/share/elasticsearch/data
+      - ./docker_data/es/plugins:/usr/share/elasticsearch/plugins
+    ports:
+      - "9200:9200"  # 暴露HTTP API端口给宿主机
+#    networks:
+#      - elastic
+    # 健康检查：确保ES完全就绪，而不是仅仅启动，这对有依赖关系的服务（如Kibana）很重要
+#    healthcheck:
+#      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#      start_period: 30s
+    # 资源限制：限制容器最多使用1G内存和1个CPU核心，防止资源争抢
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '1.0'
+#          memory: 1G
+
+  # 可选：同时部署 Kibana，方便可视化管理和数据探索
+  kibana:
+    image: kibana:7.17.6
+    container_name: kibana
+    restart:  always
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - I18N_LOCALE=zh-CN
+#      - ELASTICSEARCH_USERNAME=kibana_system
+#      # ⚠️ 这里的密码必须与elasticsearch服务中设置的密码一致
+#      - ELASTICSEARCH_PASSWORD=your-strong-password
+    ports:
+      - "5601:5601"
+#    networks:
+#      - elastic
+    depends_on:
+      - elasticsearch
+#        condition: service_healthy
+
+networks:
+  elastic:
+    driver: bridge

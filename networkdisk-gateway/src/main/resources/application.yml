@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: networkdisk-gateway
+  config:
+    import: optional:classpath:base.yml,optional:classpath:cache.yml,classpath:config.yml,optional:classpath:limiter.yml
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin, RETAIN_UNIQUE
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedHeaders: '*'
+            allowedMethods: '*'
+            allowedOrigins: '*'
+      routes:
+        - id: networkdisk-auth
+          uri: lb://networkdisk-auth
+          predicates:
+            - Path=/auth/**,/token/**
+        - id: networkdisk-business
+          uri: lb://networkdisk-business
+          predicates:
+            - Path=/trade/**,/order/**,/user/**,/collection/**,/wxPay/**,/box/**
+        - id: networkdisk-ai
+          uri: lb://networkdisk-ai
+          predicates:
+            - Path=/api/v1/ai/**
+server:
+  port: 8081
